@@ -1,3 +1,4 @@
+from langchain_openai import ChatOpenAI
 import streamlit as st
 from langchain_groq import ChatGroq
 from langchain_community.utilities import ArxivAPIWrapper, WikipediaAPIWrapper
@@ -25,6 +26,9 @@ Try more LangChain 🤝 Streamlit Agent examples at [github.com/langchain-ai/str
 ## Sidebar for settings
 st.sidebar.title("Settings")
 api_key = st.sidebar.text_input("Enter your Groq API Key:", type="password")
+# api_key = st.sidebar.text_input("Enter your Open AI API Key:", type="password")
+
+# Write the below code if api_key is provided then display a UI message
 
 if "messages" not in st.session_state:
     st.session_state["messages"] = [
@@ -38,7 +42,9 @@ if prompt := st.chat_input(placeholder="What is machine learning?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     st.chat_message("user").write(prompt)
 
-    llm = ChatGroq(groq_api_key=api_key, model_name="llama3-8b-8192", streaming=True)
+    llm = ChatGroq(groq_api_key=api_key, model_name="llama3-8b-8192", temperature=0)
+    # llm=ChatOpenAI(openai_api_key=api_key, model="gpt-4o", temperature=0, streaming=True)
+    
     tools = [search, arxiv, wiki]
 
     search_agent = initialize_agent(
@@ -46,11 +52,12 @@ if prompt := st.chat_input(placeholder="What is machine learning?"):
         llm,
         agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
         handle_parsing_errors=True,
+        max_iterations=10,  # Increase as needed
+    max_execution_time=60,  # In seconds
     )
 
     with st.chat_message("assistant"):
-        st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False)
+        st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=True)
         response = search_agent.run(st.session_state.messages, callbacks=[st_cb])
-        response = search_agent.run(st.session_state.messages)
         st.session_state.messages.append({'role': 'assistant', 'content': response})
         st.write(response)

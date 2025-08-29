@@ -36,3 +36,31 @@ required commands :
 
 
 
+commands to run the terraform script  main.tf or other .tf files are below :
+----------------------------------------------------------------------------
+----------------------------------------------------------------------------
+
+1> terraform init 
+
+>>>  This downloads provider plugins (like AWS).
+
+2> terraform validate
+
+>>> Check your script is valid:
+
+3> terraform plan -out=plan.tfplan
+
+>>> See what Terraform will do
+
+4> terraform apply plan.tfplan
+
+>>> Actually create resources:
+
+5> terraform destroy
+
+>>> When you’re done and want to remove resources
+
+That’s the basic flow: init → validate → plan → apply → destroy.
+
+
+

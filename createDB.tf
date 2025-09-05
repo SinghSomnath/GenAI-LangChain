@@ -200,3 +200,19 @@ resource "aws_db_instance" "rds" {
 
   tags = { Name = "rds-instance" }
 }
+
+
+output "bastion_ssh_command" {
+  value = "ssh -i bastion-key.pem ubuntu@${aws_instance.bastion.public_ip}"
+}
+
+output "mysql_tunnel_command" {
+  value = "ssh -i bastion-key.pem -L 3306:${aws_db_instance.rds.address}:3306 ubuntu@${aws_instance.bastion.public_ip}"
+}
+
+resource "null_resource" "ssh_tunnel" {
+  provisioner "local-exec" {
+    command = "setup-tunnel.bat ${aws_db_instance.rds.address} ${aws_instance.bastion.public_ip}"
+  }
+}
+

@@ -36,7 +36,7 @@ required commands :
 
 
 
-commands to run the terraform script  main.tf or other .tf files are below :
+commands to run the terraform script  createDB.tf or other .tf files are below :
 ----------------------------------------------------------------------------
 ----------------------------------------------------------------------------
 
@@ -62,5 +62,10 @@ commands to run the terraform script  main.tf or other .tf files are below :
 
 That’s the basic flow: init → validate → plan → apply → destroy.
 
+the step num 5 will print something like 
 
 
+bastion_ssh_command = "ssh -i bastion-key.pem ubuntu@<ec2-bastion-public-ip>"
+mysql_tunnel_command = "ssh -i bastion-key.pem -L 3306:<rds-endpoint>:3306 ec2-user@<ec2-bastion-public-ip>"
+
+6> Then run the batch file "setup_tunnel.bat <rds-endpoint> <ec2-bastion-public-ip>" to enable to port fowarding .

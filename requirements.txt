@@ -24,3 +24,7 @@ asyncio
 arxiv
 wikipedia
 duckduckgo-search
+pathlib
+# langchain.callbacks
+# langchain.agents.agent_toolkits
+sqlalchemy

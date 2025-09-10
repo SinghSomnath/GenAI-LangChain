@@ -2,11 +2,6 @@
 Gen Ai dev projects using LangChain lib
 
 
-required commands :
-
->pip install -r requirements.txt 
->streamlit run .\app_tools_agents.py
-
 app_tools_agents.py >>> 
 
 This Streamlit app creates a chatbot interface that uses LangChain agents and large language models (LLMs) to answer user queries. It integrates tools for searching the web (DuckDuckGo), Arxiv, and Wikipedia, allowing the agent to fetch and summarize information from multiple sources. The app manages chat history using Streamlit's session state and displays both user and assistant messages in a conversational format. When a user submits a prompt, the agent selects the best tool to answer the question, and its reasoning process is shown in real time using StreamlitCallbackHandler. The assistant's response is then appended to the chat history and displayed to the user.
@@ -61,3 +56,19 @@ mysql_tunnel_command = "ssh -i bastion-key.pem -L 3306:<rds-endpoint>:3306 ec2-u
 6> Then run the batch file "setup_tunnel.bat <rds-endpoint> <ec2-bastion-public-ip>" to enable to port fowarding .
 
 7> While the ssh tunnel remained active after doing the >>> step num 6 <<<<< run the relevant python code to connect to the mysql rds .
+
+
+#########################################################################
+#########################################################################
+#########################################################################
+
+Sample python commands install dependency from reuirements.txt and run any of the streamlit application (eg app_tools_agents.py)
+
+
+required commands :
+
+>pip install -r requirements.txt 
+
+
+>streamlit run .\app_tools_agents.py
+

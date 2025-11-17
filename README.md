@@ -1,3 +1,24 @@
+Below is the versions where the repo is built so far 11/17/2025 with the Python version Python 3.12.7
+
+langchain                                0.3.27
+langchain-chroma                         0.2.5
+langchain-community                      0.3.27
+langchain-core                           0.3.74
+langchain-groq                           0.3.7
+langchain-huggingface                    0.3.1
+langchain-mcp-adapters                   0.1.9
+langchain-openai                         0.3.30
+langchain-text-splitters                 0.3.9
+pip                                      25.1
+streamlit                                1.48.1
+
+
+############################################################################################################
+############################################################################################################
+
+
+
+
 # GenAI-LangChain
 Gen Ai dev projects using LangChain lib
 

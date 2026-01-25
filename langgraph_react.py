@@ -47,6 +47,11 @@ graph = StateGraph(State)
 
 # Create tool node
 tool_node = ToolNode(tools)
+
+
+
+
+
 graph.add_node("tool_node", tool_node)
 
 
@@ -73,6 +78,38 @@ graph.add_conditional_edges(
     'prompt_node',
     conditional_edge
 )
+
+
+# Workflow Example
+# For the query "What's the weather in Yorkshire?":
+
+# Without the edge (broken):
+
+# LLM decides to call weather tool
+# Tool executes and returns "It's cold and wet."
+# No path back to LLM - user gets no response
+# With the edge (working):
+
+# LLM decides to call weather tool
+# Tool executes and returns "It's cold and wet."
+# Returns to LLM with both original question AND tool result
+# LLM generates final response: "The weather in Yorkshire is cold and wet."
+# The edge ensures the agent can incorporate tool results into coherent answers rather than just executing tools in isolation. This is fundamental to the ReAct pattern where reasoning and acting alternate until the task is complete.
+
+# Sources-Repos/Files:
+# Selected context
+
+# Without this edge, the flow becomes: prompt_node → conditional_edge → tool_node → [NOWHERE TO GO]
+
+# With the edge, the complete flow is: prompt_node → conditional_edge → tool_node → prompt_node → conditional_edge → __end__
+
+
+# Workflow Example
+# For the query "Who is Sharukh Khan?":
+# With the edge, the complete flow is: prompt_node → conditional_edge →  __end__
+
+
+# The following line creates a direct connection from tool_node to prompt_node so the flow can return to prompt_node only when tool_node is executed.
 graph.add_edge("tool_node", "prompt_node")
 graph.set_entry_point("prompt_node")
 
@@ -83,7 +120,8 @@ APP = graph.compile()
 # Main execution
 if __name__ == "__main__":
     # Run the agent
-    new_state = APP.invoke({"messages": ["Whats the weather in yorkshire?"]})
+    # new_state = APP.invoke({"messages": ["Whats the weather in yorkshire?"]})
+    new_state = APP.invoke({"messages": ["Who is Sharukh Khan?"]})
     
     # Print the response
     print(new_state["messages"][-1].content)

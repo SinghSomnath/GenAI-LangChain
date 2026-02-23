@@ -50,7 +50,9 @@ llm = ChatOpenAI(
 # Initialize embeddings for AstraDB
 embeddings = OpenAIEmbeddings(
     api_key=os.getenv("OPENAI_API_KEY"),
-    model="text-embedding-3-small"
+    # model="text-embedding-3-small"
+     model="text-embedding-3-large",
+     dimensions=1024
 )
 
 # Initialize AstraDB Vector Store

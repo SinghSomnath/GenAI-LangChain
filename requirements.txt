@@ -220,3 +220,7 @@ yarl==1.20.1
 yfinance==0.2.65
 zipp==3.23.0
 zstandard==0.24.0
+# AstraDB Integration
+langchain-astradb>=0.3.0
+# Additional utilities
+typing-extensions>=4.12.0

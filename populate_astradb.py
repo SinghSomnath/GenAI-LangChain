@@ -21,7 +21,7 @@ def populate_astradb_with_samples():
     
     print("🔧 Initializing AstraDB connection...")
     
-    # Initialize embeddings
+    # Initialize emb4eddings
     embeddings = OpenAIEmbeddings(
         api_key=os.getenv("OPENAI_API_KEY"),
         # model="text-embedding-3-small"
@@ -295,5 +295,5 @@ if __name__ == "__main__":
     elif choice == "4":
         print("Goodbye!")
     
-    else:
-        print("❌ Invalid choice")
+    else:1
+    print("❌ Invalid choice")

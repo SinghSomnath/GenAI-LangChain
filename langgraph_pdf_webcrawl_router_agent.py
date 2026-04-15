@@ -860,12 +860,27 @@ async def global_exception_handler(request, exc):
 # ENTRYPOINT
 # ============================================================================
 
+# if __name__ == "__main__":
+#     import uvicorn
+#     import threading
+      
+#     def run_fastapi():
+#         uvicorn.run(app, host="0.0.0.0", port=8000)
+    
+#     fastapi_thread = threading.Thread(target=run_fastapi, daemon=True)
+#     fastapi_thread.start()
+
+    # ============================================================================
+# ENTRYPOINT
+# ============================================================================
+
 if __name__ == "__main__":
     import uvicorn
-    import threading
-      
-    def run_fastapi():
-        uvicorn.run(app, host="0.0.0.0", port=8000)
     
-    fastapi_thread = threading.Thread(target=run_fastapi, daemon=True)
-    fastapi_thread.start()
+    uvicorn.run(
+        "langgraph_pdf_webcrawl_router_agent:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="info",
+    )

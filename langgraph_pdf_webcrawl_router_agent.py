@@ -47,7 +47,7 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import JSONResponse
@@ -347,16 +347,37 @@ def search_and_crawl(query: str, max_results: int = WEB_SEARCH_MAX_RESULTS) -> l
     At most *max_results* pages are returned; pages that fail to fetch are skipped.
     """
     crawled: list[dict] = []
+    
+    # Clean up the query - remove extra spaces and special characters
+    clean_query = ' '.join(query.strip().split())
+    logger.info("Cleaned query: '%s' (original: '%s')", clean_query, query)
 
     # ── DuckDuckGo search ────────────────────────────────────────────────────
     try:
         with DDGS() as ddgs:
-            results = list(ddgs.text(query, max_results=max_results * 2))
+            # Try with cleaned query first
+            results = list(ddgs.text(clean_query, max_results=max_results * 2))
+            
+            # If no results, try without question mark
+            if not results and '?' in clean_query:
+                query_no_qmark = clean_query.replace('?', '').strip()
+                logger.info("No results found, retrying without '?': %s", query_no_qmark)
+                results = list(ddgs.text(query_no_qmark, max_results=max_results * 2))
+                
+            # If still no results, try a simpler query
+            if not results:
+                # Extract key terms (e.g., "president India" from "who is president of India")
+                key_terms = ' '.join([word for word in clean_query.split() 
+                                    if word.lower() not in ['who', 'what', 'where', 'when', 'why', 'how', 'is', 'are', 'the', 'of', '?']])
+                if key_terms and key_terms != clean_query:
+                    logger.info("No results found, retrying with key terms: %s", key_terms)
+                    results = list(ddgs.text(key_terms, max_results=max_results * 2))
+                    
     except Exception as exc:
         logger.error("DuckDuckGo search failed: %s", exc)
         return []
 
-    logger.info("DuckDuckGo returned %d raw results for query: %s", len(results), query)
+    logger.info("DuckDuckGo returned %d raw results for query: %s", len(results), clean_query)
 
     for result in results:
         if len(crawled) >= max_results:
@@ -412,7 +433,6 @@ def search_and_crawl(query: str, max_results: int = WEB_SEARCH_MAX_RESULTS) -> l
     logger.info("Web crawl finished — %d pages collected", len(crawled))
     return crawled
 
-
 # ============================================================================
 # GRAPH NODES
 # ============================================================================
@@ -422,13 +442,19 @@ def router_node(state: State) -> State:
     user_question = state["messages"][0].content
 
     has_custom_docs = len(INGESTED_DOCS) > 0
+    
+    # Get document filenames for context
+    doc_files = [doc["filename"] for doc in INGESTED_DOCS.values()] if has_custom_docs else []
+    doc_list = ", ".join(doc_files[:5]) + ("..." if len(doc_files) > 5 else "") if doc_files else "none"
+    
     doc_hint = (
-        f"Note: AstraDB currently holds {len(INGESTED_DOCS)} ingested PDF document(s). "
+        f"Note: AstraDB currently holds {len(INGESTED_DOCS)} ingested PDF document(s): {doc_list}. "
         "Prefer ASTRADB for questions that are likely answered by those files."
         if has_custom_docs
         else "Note: no PDFs have been uploaded yet — prefer WEB_CRAWL unless the question is clearly domain-specific."
     )
 
+    # Enhanced routing prompt for better decision making
     routing_prompt = f"""You are a routing assistant. Decide whether the question below should be answered using:
 
 1. **ASTRADB** – a vector database containing domain-specific PDF documents
@@ -438,13 +464,20 @@ def router_node(state: State) -> State:
 
 {doc_hint}
 
+Important routing rules:
+- If the question contains a proper noun, name, or specific term that could be in the uploaded documents, choose ASTRADB
+- For single-word queries or names, prefer ASTRADB if documents exist
+- Only choose WEB_CRAWL for clearly time-sensitive queries (latest, recent, current news) or general web information
+
 Question: {user_question}
 
-Respond with ONLY one of these two words: "ASTRADB" or "WEB_CRAWL".
-"""
+Respond with ONLY one of these two words: "ASTRADB" or "WEB_CRAWL"."""
+
+    # Add a more explicit system message
+    system_msg = """You are a routing decision maker. When documents exist in AstraDB, favor routing there unless the question explicitly asks for current/latest information from the web. Single words or names should go to ASTRADB first. Respond with only 'ASTRADB' or 'WEB_CRAWL'."""
 
     response = llm.invoke([
-        SystemMessage(content="You are a routing decision maker. Respond with only 'ASTRADB' or 'WEB_CRAWL'."),
+        SystemMessage(content=system_msg),
         HumanMessage(content=routing_prompt),
     ])
     route_decision = response.content.strip().upper()
@@ -457,7 +490,6 @@ Respond with ONLY one of these two words: "ASTRADB" or "WEB_CRAWL".
         "route_decision": route_decision,
         "messages": [AIMessage(content=f"Routing to {route_decision}...")],
     }
-
 
 def astradb_retrieval_node(state: State) -> State:
     """Retrieves relevant chunks from AstraDB."""

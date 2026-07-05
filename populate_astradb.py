@@ -9,8 +9,111 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from dotenv import load_dotenv
 import os
+import sys
+import time
+
+
 
 load_dotenv()
+
+
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+openrouter_key = os.getenv("OPENROUTER_API_KEY")
+openai_key = os.getenv("OPENAI_API_KEY")
+openrouter_model = os.getenv("OPENROUTER_MODEL", "qwen/qwen3-embedding-8b")
+openrouter_model_dimensions = int(os.getenv("OPENROUTER_MODEL_DIMENSIONS", 4096))
+temperature = float(os.getenv("OPENROUTER_TEMPERATURE", 0.0))
+
+def _validate_astra_config():
+    """Validate AstraDB environment variables before attempting connection."""
+    endpoint = os.getenv("ASTRA_DB_API_ENDPOINT", "")
+    token = os.getenv("ASTRA_DB_APPLICATION_TOKEN", "")
+
+    if not endpoint:
+        print("❌ ASTRA_DB_API_ENDPOINT is not set in your .env file.")
+        sys.exit(1)
+    if not endpoint.startswith("https://"):
+        print(f"❌ ASTRA_DB_API_ENDPOINT must start with 'https://'. Got: {endpoint}")
+        sys.exit(1)
+    if not token:
+        print("❌ ASTRA_DB_APPLICATION_TOKEN is not set in your .env file.")
+        sys.exit(1)
+
+    # Extract hostname and test DNS resolution
+    from urllib.parse import urlparse
+    import socket
+
+    hostname = urlparse(endpoint).hostname
+    print(f"🔍 Resolving AstraDB host: {hostname}")
+    try:
+        socket.getaddrinfo(hostname, 443)
+        print(f"✅ DNS resolution successful for {hostname}")
+    except socket.gaierror:
+        print(f"\n❌ DNS resolution failed for: {hostname}")
+        print("   Possible causes:")
+        print("   1. ASTRA_DB_API_ENDPOINT is incorrect or has a typo")
+        print("   2. Corporate firewall/proxy is blocking DNS")
+        print("   3. VPN is interfering with DNS resolution")
+        print("   4. The AstraDB database may have been deleted")
+        print(f"\n   Current value: {endpoint}")
+        print("\n   Try running:  nslookup " + hostname)
+        sys.exit(1)
+
+
+
+
+def _create_embeddings():
+    """
+    Create embeddings using OpenRouter's OpenAI-compatible API.
+    Falls back to direct OpenAI if OPENROUTER_API_KEY is not set
+    but OPENAI_API_KEY is.
+    """
+
+
+    if openrouter_key:
+        print("🔑 Using OpenRouter API key")
+        return OpenAIEmbeddings(
+            api_key=openrouter_key,
+            base_url=OPENROUTER_BASE_URL,
+            model=openrouter_model,
+            dimensions=openrouter_model_dimensions,
+            default_headers={
+                "HTTP-Referer": "https://your-app-url.com",  # Optional: for OpenRouter analytics
+                "X-Title": "AstraDB Population Script",       # Optional: app name in OpenRouter dashboard
+            },
+        )
+    else:
+        print("❌ OPENROUTER_API_KEY is *** NOT *** set in your .env file.")
+        sys.exit(1)
+
+
+def _create_vector_store(embeddings):
+    """Create AstraDB vector store with retry for transient rate-limit errors."""
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        try:
+            return AstraDBVectorStore(
+                embedding=embeddings,
+                collection_name=os.getenv("ASTRA_DB_COLLECTION", "default_collection"),
+                api_endpoint=os.getenv("ASTRA_DB_API_ENDPOINT"),
+                token=os.getenv("ASTRA_DB_APPLICATION_TOKEN"),
+                namespace=os.getenv("ASTRA_DB_KEYSPACE", "default_keyspace"),
+            )
+        except Exception as exc:
+            error_msg = str(exc)
+            if "insufficient_quota" in error_msg:
+                print(
+                    "\n❌ API quota exceeded. Please check your plan and billing.\n"
+                )
+                sys.exit(1)
+            if "429" in error_msg and attempt < max_retries:
+                wait = 2 ** attempt
+                print(f"⏳ Rate-limited. Retrying in {wait}s (attempt {attempt}/{max_retries})...")
+                time.sleep(wait)
+            else:
+                raise
+
+
 
 
 def populate_astradb_with_samples():
@@ -21,15 +124,11 @@ def populate_astradb_with_samples():
     
     print("🔧 Initializing AstraDB connection...")
     
-    # Initialize emb4eddings
-    embeddings = OpenAIEmbeddings(
-        api_key=os.getenv("OPENAI_API_KEY"),
-        # model="text-embedding-3-small"
-        model="text-embedding-3-large",
-        dimensions=1024
-    )
+
     
+    embeddings = _create_embeddings()
     # Initialize vector store
+    _validate_astra_config()
     vector_store = AstraDBVectorStore(
         embedding=embeddings,
         collection_name=os.getenv("ASTRA_DB_COLLECTION", "default_collection"),
@@ -37,6 +136,10 @@ def populate_astradb_with_samples():
         token=os.getenv("ASTRA_DB_APPLICATION_TOKEN"),
         namespace=os.getenv("ASTRA_DB_KEYSPACE", "default_keyspace"),
     )
+
+    
+
+    # vector_store = _create_vector_store(embeddings)
     
     print("✅ Connected to AstraDB")
     
@@ -264,10 +367,7 @@ if __name__ == "__main__":
     
     elif choice == "2":
         print("\n🔧 Connecting to AstraDB...")
-        embeddings = OpenAIEmbeddings(
-            api_key=os.getenv("OPENAI_API_KEY"),
-            model="text-embedding-3-small"
-        )
+        embeddings = _create_embeddings()
         vector_store = AstraDBVectorStore(
             embedding=embeddings,
             collection_name=os.getenv("ASTRA_DB_COLLECTION", "default_collection"),
@@ -279,10 +379,7 @@ if __name__ == "__main__":
     
     elif choice == "3":
         print("\n🔧 Connecting to AstraDB...")
-        embeddings = OpenAIEmbeddings(
-            api_key=os.getenv("OPENAI_API_KEY"),
-            model="text-embedding-3-small"
-        )
+        embeddings = _create_embeddings()
         vector_store = AstraDBVectorStore(
             embedding=embeddings,
             collection_name=os.getenv("ASTRA_DB_COLLECTION", "default_collection"),
@@ -295,5 +392,5 @@ if __name__ == "__main__":
     elif choice == "4":
         print("Goodbye!")
     
-    else:1
-    print("❌ Invalid choice")
+    else:
+        print("❌ Invalid choice")

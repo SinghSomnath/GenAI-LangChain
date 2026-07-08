@@ -19,7 +19,6 @@ load_dotenv()
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 openrouter_key = os.getenv("OPENROUTER_API_KEY")
-openai_key = os.getenv("OPENAI_API_KEY")
 openrouter_model = os.getenv("OPENROUTER_MODEL", "qwen/qwen3-embedding-8b")
 openrouter_model_dimensions = int(os.getenv("OPENROUTER_MODEL_DIMENSIONS", 4096))
 temperature = float(os.getenv("OPENROUTER_TEMPERATURE", 0.0))
@@ -64,9 +63,7 @@ def _validate_astra_config():
 
 def _create_embeddings():
     """
-    Create embeddings using OpenRouter's OpenAI-compatible API.
-    Falls back to direct OpenAI if OPENROUTER_API_KEY is not set
-    but OPENAI_API_KEY is.
+    Create embeddings using OpenRouter's  API.
     """
 
 
